@@ -82,11 +82,7 @@ async def send_question(query, context):
     )
 
 def main():
-    # अपना बोट टोकन यहाँ डायरेक्ट भी डाल सकते हैं अगर एनवायरनमेंट वेरिएबल सेट नहीं है
-    TOKEN = os.environ.get("BOT_TOKEN")
-    if not TOKEN:
-        print("Error: BOT_TOKEN environment variable not set!")
-        return
+    TOKEN = 8699141228:AAHfg5kkUzfkidqHknD8OK_l823ky5rkemo
 
     app = Application.builder().token(TOKEN).build()
 
@@ -98,4 +94,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
