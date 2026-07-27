@@ -1,4 +1,3 @@
-
 import os
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
@@ -21,12 +20,12 @@ questions = [
     },
 ]
 
-user_data = {}
+users = {}
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [[InlineKeyboardButton("📝 Start Test", callback_data="start_test")]]
+    keyboard = [[InlineKeyboardButton("📝 Start Test", callback_data="start")]]
     await update.message.reply_text(
-        "स्वागत है!\nनीचे बटन दबाकर टेस्ट शुरू करें।",
+        "स्वागत है!\n\nनीचे बटन दबाकर टेस्ट शुरू करें।",
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
 
@@ -34,55 +33,51 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
-    if query.data == "start_test":
-        user_data[query.from_user.id] = {
-            "score": 0,
-            "current": 0
-        }
-        await send_question(query, context)
+    uid = query.from_user.id
 
-async def send_question(query, context):
-    data = user_data[query.from_user.id]
-    q = questions[data["current"]]
+    if query.data == "start":
+        users[uid] = {"index": 0, "score": 0}
+        await send_question(query)
+
+    elif query.data.startswith("ans_"):
+        choice = int(query.data.split("_")[1])
+        data = users[uid]
+        q = questions[data["index"]]
+
+        if choice == q["answer"]:
+            data["score"] += 1
+
+        data["index"] += 1
+
+        if data["index"] >= len(questions):
+            await query.edit_message_text(
+                f"✅ Test Complete\n\nScore: {data['score']}/{len(questions)}"
+            )
+        else:
+            await send_question(query)
+
+async def send_question(query):
+    uid = query.from_user.id
+    data = users[uid]
+    q = questions[data["index"]]
 
     keyboard = []
+
     for i, option in enumerate(q["options"]):
         keyboard.append(
             [InlineKeyboardButton(option, callback_data=f"ans_{i}")]
         )
 
-    await query.message.reply_text(
+    await query.edit_message_text(
         q["question"],
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
 
-async def answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-
-    data = user_data[query.from_user.id]
-    q = questions[data["current"]]
-
-    choice = int(query.data.split("_")[1])
-
-    if choice == q["answer"]:
-        data["score"] += 1
-
-    data["current"] += 1
-
-    if data["current"] >= len(questions):
-        await query.message.reply_text(
-            f"✅ Test Complete!\n\nScore: {data['score']}/{len(questions)}"
-        )
-    else:
-        await send_question(query, context)
-
-TOKEN = os.getenv("BOT_TOKEN")
+TOKEN = os.environ["BOT_TOKEN"]
 
 app = Application.builder().token(TOKEN).build()
 
 app.add_handler(CommandHandler("start", start))
-app.add_handler(CallbackQueryHandler(button, pattern="start_test"))
-app.add_handler(CallbackQueryHandler(answer, pattern="ans_"))
+app.add_handler(CallbackQueryHandler(button))
 
 app.run_polling()
