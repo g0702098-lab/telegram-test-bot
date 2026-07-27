@@ -7,6 +7,7 @@ from telegram.ext import (
     ContextTypes,
 )
 
+# क्विज़ के प्रश्न और विकल्प
 questions = [
     {
         "question": "भारत की राजधानी क्या है?",
@@ -37,10 +38,16 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if query.data == "start":
         users[uid] = {"index": 0, "score": 0}
-        await send_question(query)
+        await send_question(query, context)
 
     elif query.data.startswith("ans_"):
         choice = int(query.data.split("_")[1])
+        
+        # सुरक्षा के लिए चेक करें कि यूजर डिक्शनरी में है या नहीं
+        if uid not in users:
+            await query.edit_message_text("❌ सत्र (Session) समाप्त हो गया है। कृपया /start टाइप करें।")
+            return
+
         data = users[uid]
         q = questions[data["index"]]
 
@@ -51,33 +58,44 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if data["index"] >= len(questions):
             await query.edit_message_text(
-                f"✅ Test Complete\n\nScore: {data['score']}/{len(questions)}"
+                f"✅ Test Complete!\n\nआपका स्कोर: {data['score']}/{len(questions)}"
             )
+            # टेस्ट खत्म होने पर यूजर को डेटा से हटा सकते हैं
+            del users[uid]
         else:
-            await send_question(query)
+            await send_question(query, context)
 
-async def send_question(query):
+async def send_question(query, context):
     uid = query.from_user.id
     data = users[uid]
     q = questions[data["index"]]
 
     keyboard = []
-
     for i, option in enumerate(q["options"]):
         keyboard.append(
             [InlineKeyboardButton(option, callback_data=f"ans_{i}")]
         )
 
     await query.edit_message_text(
-        q["question"],
+        text=q["question"],
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
 
-TOKEN = os.environ["BOT_TOKEN"]
+def main():
+    # अपना बोट टोकन यहाँ डायरेक्ट भी डाल सकते हैं अगर एनवायरनमेंट वेरिएबल सेट नहीं है
+    TOKEN = os.environ.get("BOT_TOKEN")
+    if not TOKEN:
+        print("Error: BOT_TOKEN environment variable not set!")
+        return
 
-app = Application.builder().token(TOKEN).build()
+    app = Application.builder().token(TOKEN).build()
 
-app.add_handler(CommandHandler("start", start))
-app.add_handler(CallbackQueryHandler(button))
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CallbackQueryHandler(button))
 
-app.run_polling()
+    print("Bot is running...")
+    app.run_polling()
+
+if __name__ == "__main__":
+    main()
+    
