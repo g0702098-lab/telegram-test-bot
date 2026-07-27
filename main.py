@@ -82,7 +82,7 @@ async def send_question(query, context):
     )
 
 def main():
-    TOKEN = 8699141228:AAHfg5kkUzfkidqHknD8OK_l823ky5rkemo
+    TOKEN = os.environ.get("BOT_TOKEN")
 
     app = Application.builder().token(TOKEN).build()
 
